@@ -25,7 +25,7 @@ std::string preprocessRegex(std::string regex) {
     // A+ -> AA*
     // (A|B)+ -> (A|B)(A|B)*
     std::string expanded = "";
-    for (int i = 0; i < regex.length(); i++) {
+    for (size_t i = 0; i < regex.length(); i++) {
         char c = regex[i];
         if (c == '+') {
             if (expanded.empty()) continue;
@@ -60,7 +60,7 @@ std::string preprocessRegex(std::string regex) {
 
     // PASS 2: Insert Explicit Concatenation '.'
     std::string res = "";
-    for (int i = 0; i < expanded.length(); i++) {
+    for (size_t i = 0; i < expanded.length(); i++) {
         char c = expanded[i];
         res += c;
        

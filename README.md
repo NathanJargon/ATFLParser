@@ -61,6 +61,11 @@ main.cpp
    └─→ adaptive_pda.h             (Parses with error recovery)
 ```
 
+### Compiling All Files
+
+g++ -std=c++14 -Wall -Wextra -O2 -o output\main.exe *.cpp
+.\output\main.exe
+
 ---
 
 ## Phase 1: Lexical Analysis
@@ -589,6 +594,31 @@ STRUCTURE STABLE
 - C++11 or later
 - Standard compiler (g++, clang, MSVC)
 
+### SFML GUI (recommended on Windows via MSYS2)
+If you want the GUI window with buttons:
+1) Install MSYS2, open the **UCRT64** shell.
+2) Update and install toolchain + SFML:
+  ```bash
+  pacman -Syu
+  pacman -Syu
+  pacman -S mingw-w64-ucrt-x86_64-toolchain mingw-w64-ucrt-x86_64-sfml
+  ```
+3) In the UCRT64 shell, build the GUI:
+  ```bash
+  cd /c/Nash/Projects/atflparser
+  g++ -std=c++17 -Wall -Wextra -O2 \
+     gui_main.cpp \
+     nfa_state.cpp \
+     regex_preprocessor.cpp \
+     thompsons_construction.cpp \
+     nfa_simulator.cpp \
+     adaptive_pda.cpp \
+    -lsfml-graphics -lsfml-window -lsfml-system \
+    -o output/gui.exe
+  ./output/gui.exe
+  ```
+4) The GUI shows buttons for Phase 1 (regex -> NFA) and Phase 2 (adaptive parser). Press ESC or Quit to exit.
+
 ### Compilation
 
 **Single command** (compile all files):
@@ -719,5 +749,3 @@ This is an educational project. Use freely for learning purposes.
 ---
 
 **Last Updated**: December 7, 2025
-#   A T F L P a r s e r  
- 
