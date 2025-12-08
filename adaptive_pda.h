@@ -55,7 +55,7 @@ class AdaptivePDA {
 public:
     AdaptivePDA();
     void adaptiveRepair(std::string requiredToken, std::string actualToken);
-    void parse(std::vector<std::string> tokens);
+    std::string parse(std::vector<std::string> tokens);
 };
 
 #endif

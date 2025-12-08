@@ -63,8 +63,11 @@ main.cpp
 
 ### Compiling All Files
 
-g++ -std=c++14 -Wall -Wextra -O2 -o output\main.exe *.cpp
-.\output\main.exe
+cd /c/Nash/Projects/atflparser
+
+ls -la output/gui.exe; output/gui.exe
+
+g++ -std=c++17 -Wall -Wextra -O2 gui_main.cpp nfa_state.cpp regex_preprocessor.cpp thompsons_construction.cpp nfa_simulator.cpp adaptive_pda.cpp -lsfml-graphics -lsfml-window -lsfml-system -o output/gui.exe 2>&1
 
 ---
 

@@ -59,33 +59,26 @@ AdaptivePDA::AdaptivePDA() {
 }
 
 void AdaptivePDA::adaptiveRepair(std::string requiredToken, std::string actualToken) {
-    std::cout << "\n[!] ALERT: Mismatch. Expected [" << requiredToken << "], Found [" << actualToken << "]" << std::endl;
-    std::cout << "[*] BIO-ADAPTIVE UNIT: Calculating affinity heuristic..." << std::endl;
-   
+    // Adaptive repair now doesn't print; called from parse() which captures everything
     double affinity = 0.0;
     if (affinityMatrix.count(requiredToken) && affinityMatrix[requiredToken].count(actualToken)) {
         affinity = affinityMatrix[requiredToken][actualToken];
     }
 
-    std::cout << "[*] HEURISTIC SCORE: " << affinity << " / 1.0" << std::endl;
-
-    // Threshold for adaptive acceptance
     if (affinity > 0.8) {
-        std::cout << "[*] DECISION: High affinity detected. Treating as valid substitution." << std::endl;
         adaptiveMap[actualToken] = requiredToken;
-        std::cout << "[*] SYSTEM REPAIRED: Token equivalence map updated." << std::endl;
     }
     else if (affinity > 0.5) {
-         std::cout << "[*] DECISION: Moderate affinity. Warning issued but parsing continues (Wobble pair)." << std::endl;
-         adaptiveMap[actualToken] = requiredToken;
+        adaptiveMap[actualToken] = requiredToken;
     }
     else {
-        std::cout << "[!] CRITICAL: Low affinity. Structural integrity compromised. Aborting." << std::endl;
-        exit(1);
+        // Low affinity: still update map but user sees warning in parse output
+        adaptiveMap[actualToken] = requiredToken;
     }
 }
 
-void AdaptivePDA::parse(std::vector<std::string> tokens) {
+std::string AdaptivePDA::parse(std::vector<std::string> tokens) {
+    std::ostringstream ss;
     std::stack<std::string> s;
     s.push("$");
     s.push(startSymbol);
@@ -93,23 +86,16 @@ void AdaptivePDA::parse(std::vector<std::string> tokens) {
     int ptr = 0;
     tokens.push_back("$");
 
-    std::cout << "\n--- Starting DNA Hairpin Parser (Context-Free) ---" << std::endl;
-    std::cout << std::left << std::setw(15) << "STACK" << std::setw(15) << "INPUT" << "ACTION" << std::endl;
+    ss << "\n--- DNA Hairpin Parser (Adaptive) ---\n";
 
     while (!s.empty()) {
         std::string top = s.top();
         std::string lookahead = tokens[ptr];
        
-        // Visualization
-        std::string stackStr = "";
-        std::stack<std::string> temp = s;
-        while(!temp.empty()) { stackStr += temp.top(); temp.pop(); }
-        std::cout << std::left << std::setw(15) << stackStr.substr(0,14) << std::setw(15) << lookahead << " ";
-
         if (top == "$") {
             if (lookahead == "$") {
-                std::cout << "STRUCTURE STABLE" << std::endl;
-                return;
+                ss << "STRUCTURE STABLE\n";
+                return ss.str();
             }
         }
 
@@ -117,24 +103,38 @@ void AdaptivePDA::parse(std::vector<std::string> tokens) {
         if (parsingTable.find(top) == parsingTable.end()) {
            
             if (top == lookahead) {
-                std::cout << "Match " << top << std::endl;
+                ss << "Match " << top << "\n";
                 s.pop(); ptr++;
             }
-            // Check Adaptive Map (Learned aliases)
             else if (adaptiveMap.count(lookahead) && adaptiveMap[lookahead] == top) {
-                 std::cout << "Match " << top << " (via " << lookahead << ")" << std::endl;
+                 ss << "Match " << top << " (via " << lookahead << ")\n";
                  s.pop(); ptr++;
             }
             else {
-                // Trigger the Generalized Heuristic
-                adaptiveRepair(top, lookahead);
+                double affinity = 0.0;
+                if (affinityMatrix.count(top) && affinityMatrix[top].count(lookahead)) {
+                    affinity = affinityMatrix[top][lookahead];
+                }
+                ss << "[!] Mismatch: Expected [" << top << "], Found [" << lookahead << "]\n";
+                ss << "[*] Affinity: " << affinity << " / 1.0\n";
+                
+                if (affinity > 0.8) {
+                    ss << "[+] HIGH: Accepting substitution.\n";
+                    adaptiveMap[lookahead] = top;
+                } else if (affinity > 0.5) {
+                    ss << "[~] MEDIUM: Wobble pairing; continuing.\n";
+                    adaptiveMap[lookahead] = top;
+                } else {
+                    ss << "[-] LOW: Rejecting. Parse failed.\n";
+                    return ss.str();
+                }
             }
         }
         // Case 2: Stack Top is Non-Terminal
         else if (parsingTable.count(top)) {
             if (parsingTable[top].find(lookahead) == parsingTable[top].end()) {
-                std::cout << "ERROR: Invalid Start of Structure." << std::endl;
-                return;
+                ss << "ERROR: Invalid start of structure.\n";
+                return ss.str();
             }
 
             int ruleIndex = parsingTable[top][lookahead];
@@ -142,14 +142,15 @@ void AdaptivePDA::parse(std::vector<std::string> tokens) {
            
             std::string rhsStr = "";
             for(const auto& val : p.rhs) rhsStr += val + " ";
-            std::cout << "Expand " << p.lhs << " -> " << rhsStr << std::endl;
+            ss << "Expand " << p.lhs << " -> " << rhsStr << "\n";
            
             s.pop();
             for (int i = p.rhs.size() - 1; i >= 0; i--) s.push(p.rhs[i]);
         }
         else {
-            std::cout << "Error: Unknown State." << std::endl;
-            return;
+            ss << "Error: Unknown state.\n";
+            return ss.str();
         }
     }
+    return ss.str();
 }
