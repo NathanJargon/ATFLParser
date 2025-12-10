@@ -68,12 +68,12 @@ std::string simulateNFAWithTrace(NFAFragment nfa, std::string input) {
     
     getEpsilonClosure(nfa.start, visited, currentStates);
     
-    trace << "      Step 0: Initial ε-closure from state " << nfa.start->id << "\n";
+    trace << "      Step 0: Initial ε-closure from state q" << nfa.start->id << "\n";
     trace << "              Current states: {";
     bool first = true;
     for (auto s : currentStates) {
         if (!first) trace << ", ";
-        trace << s->id;
+        trace << "q" << s->id;
         first = false;
     }
     trace << "}\n\n";
@@ -87,11 +87,11 @@ std::string simulateNFAWithTrace(NFAFragment nfa, std::string input) {
         
         for (auto s : currentStates) {
             if (s->transitions.count(c)) {
-                trace << "              State " << s->id << " --[" << c << "]--> ";
+                trace << "              State q" << s->id << " --[" << c << "]--> ";
                 bool firstTrans = true;
                 for (auto next : s->transitions[c]) {
                     if (!firstTrans) trace << ", ";
-                    trace << next->id;
+                    trace << "q" << next->id;
                     firstTrans = false;
                     
                     std::set<int> v;
@@ -107,7 +107,7 @@ std::string simulateNFAWithTrace(NFAFragment nfa, std::string input) {
         first = true;
         for (auto s : currentStates) {
             if (!first) trace << ", ";
-            trace << s->id;
+            trace << "q" << s->id;
             first = false;
         }
         trace << "}\n";
@@ -125,7 +125,7 @@ std::string simulateNFAWithTrace(NFAFragment nfa, std::string input) {
         for(auto f : nfa.finals) {
             if(s == f) {
                 accepted = true;
-                trace << "State " << s->id << " is a final state\n";
+                trace << "State q" << s->id << " is a final state\n";
                 break;
             }
         }

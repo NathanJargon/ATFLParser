@@ -131,10 +131,10 @@ static std::string runPhase1(const std::string& regex, const std::string& testIn
         int stateCount = StateManager::getStateCount();
         oss << "[4] Thompson's NFA Construction:\n";
         oss << "    States created: " << stateCount << "\n";
-        oss << "    Start state: " << nfa.start->id << "\n";
+        oss << "    Start state: q" << nfa.start->id << "\n";
         oss << "    Final states: ";
         for (size_t i = 0; i < nfa.finals.size(); i++) {
-            oss << nfa.finals[i]->id;
+            oss << "q" << nfa.finals[i]->id;
             if (i < nfa.finals.size() - 1) oss << ", ";
         }
         oss << "\n\n";
@@ -185,12 +185,17 @@ static std::string runPDA(const std::string& input) {
     
     std::ostringstream oss;
     oss << "=== SYNTACTIC ANALYSIS: Pushdown Automaton ===\n\n";
-    oss << "[Context-Free Language: Balanced Parentheses]\n\n";
+    oss << "[Context-Free Language: a^n b^n (equal a's then b's)]\n\n";
     oss << "Grammar:\n";
-    oss << "  S -> ( S ) | S S | ε\n";
-    oss << "  (Nested and sequential balanced parentheses)\n\n";
+    oss << "  S -> a S b | S S | ε\n";
+    oss << "  (Letters instead of parentheses)\n\n";
     oss << "Input: " << input << "\n\n";
-    oss << "PDA Simulation using Stack:\n\n";
+    
+    // Align with 5-step style and note missing lexical steps
+    oss << "[1] Regex / NFA: Not applicable for PDA (uses stack instead)\n";
+    oss << "[2] Thompson NFA: Not applicable\n";
+    oss << "[3] DFA Minimization: Not applicable\n";
+    oss << "[4] PDA Stack Simulation (push on 'a', pop on 'b'):\n\n";
     
     std::vector<char> stack;
     bool valid = true;
@@ -198,35 +203,27 @@ static std::string runPDA(const std::string& input) {
     
     for (size_t i = 0; i < input.length(); i++) {
         char c = input[i];
+        if (c == ' ') continue; // ignore spaces
+
         oss << "  Step " << step++ << ": Read '" << c << "' at position " << i << "\n";
         
-        if (c == '(' || c == '[' || c == '{') {
-            stack.push_back(c);
-            oss << "           Action: PUSH '" << c << "' onto stack\n";
-        } else if (c == ')' || c == ']' || c == '}') {
+        if (c == 'a') {
+            stack.push_back('A');
+            oss << "           Action: PUSH 'A' onto stack (saw 'a')\n";
+        } else if (c == 'b') {
             if (stack.empty()) {
                 oss << "           Action: POP failed - Stack is empty!\n";
-                oss << "           ERROR: Unmatched closing '" << c << "'\n";
+                oss << "           ERROR: Extra 'b' with no matching 'a'\n";
                 valid = false;
                 break;
             }
-            
             char top = stack.back();
-            bool match = (top == '(' && c == ')') || 
-                        (top == '[' && c == ']') ||
-                        (top == '{' && c == '}');
-            
-            if (match) {
-                stack.pop_back();
-                oss << "           Action: POP '" << top << "' (matches '" << c << "')\n";
-            } else {
-                oss << "           Action: POP '" << top << "' (MISMATCH with '" << c << "')\n";
-                oss << "           ERROR: Mismatched brackets\n";
-                valid = false;
-                break;
-            }
-        } else if (c != ' ') {
-            oss << "           Action: SKIP (not a bracket)\n";
+            stack.pop_back();
+            oss << "           Action: POP '" << top << "' (matched 'b')\n";
+        } else {
+            oss << "           Action: REJECT - Only 'a' then 'b' are allowed\n";
+            valid = false;
+            break;
         }
         
         oss << "           Stack: [";
@@ -240,18 +237,18 @@ static std::string runPDA(const std::string& input) {
     
     if (valid && !stack.empty()) {
         oss << "  Final Check: Stack not empty!\n";
-        oss << "  ERROR: Unclosed brackets remain: ";
+        oss << "  ERROR: Remaining 'a' without matching 'b': ";
         for (char c : stack) oss << c;
         oss << "\n";
         valid = false;
     }
     
-    oss << "\n--- Result ---\n";
+    oss << "[5] Result:\n";
     if (valid) {
-        oss << "[ACCEPT] String is balanced and well-formed\n";
+        oss << "[ACCEPT] String is in a^n b^n (equal a's then b's)\n";
         oss << "This is a valid context-free language string\n";
     } else {
-        oss << "[REJECT] String is not balanced\n";
+        oss << "[REJECT] String is not in a^n b^n\n";
     }
     
     oss << "\nNote: PDAs use a stack (infinite memory) unlike\n";
@@ -262,7 +259,7 @@ static std::string runPDA(const std::string& input) {
 }
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode({1100u, 700u}), "Formal Language Hierarchy - Lexical & Syntactic Analysis", sf::Style::Close);
+    sf::RenderWindow window(sf::VideoMode({1100u, 700u}), "Emor-Samaria-Bond Analysis", sf::Style::Close);
     window.setFramerateLimit(60);
 
     sf::Font font;
@@ -306,11 +303,11 @@ int main() {
     InputBox testInput(font, "hello world abc123", {25.f, 225.f}, {280.f, 32.f});
 
     // PDA INPUT (Context-Free)
-    sf::Text pdaLabel(font, "Parentheses String:", 13);
+    sf::Text pdaLabel(font, "Letters String (a^n b^n):", 13);
     pdaLabel.setFillColor(sf::Color(200, 200, 200));
     pdaLabel.setPosition({25.f, 140.f});
 
-    InputBox pdaInput(font, "((()))", {25.f, 160.f}, {280.f, 32.f});
+    InputBox pdaInput(font, "aaabbb", {25.f, 160.f}, {280.f, 32.f});
 
     // OPTIONS
     sf::Text optionsLabel(font, "Options:", 11);
@@ -333,9 +330,9 @@ int main() {
     Button btnSample3(font, "[0-9]+", {25.f, 375.f}, {130.f, 25.f}, 10);
     
     // Sample buttons for PDA mode
-    Button btnSamplePDA1(font, "((()))", {25.f, 345.f}, {100.f, 25.f}, 10);
-    Button btnSamplePDA2(font, "({[]})", {135.f, 345.f}, {100.f, 25.f}, 10);
-    Button btnSamplePDA3(font, "()[]{}[]", {245.f, 345.f}, {60.f, 25.f}, 10);
+    Button btnSamplePDA1(font, "aaabbb", {25.f, 345.f}, {100.f, 25.f}, 10);
+    Button btnSamplePDA2(font, "aabb", {135.f, 345.f}, {100.f, 25.f}, 10);
+    Button btnSamplePDA3(font, "aaabb", {245.f, 345.f}, {60.f, 25.f}, 10);
 
     Button btnAnalyze(font, "Run Analysis", {25.f, 410.f});
     Button btnToggleMode(font, "Switch Mode", {25.f, 470.f});
@@ -467,13 +464,13 @@ int main() {
                         }
                     } else {
                         if (btnSamplePDA1.contains(mpos)) {
-                            pdaInput.text = "((()))";
+                            pdaInput.text = "aaabbb";
                             shouldRun = true;
                         } else if (btnSamplePDA2.contains(mpos)) {
-                            pdaInput.text = "({[]})";
+                            pdaInput.text = "aabb";
                             shouldRun = true;
                         } else if (btnSamplePDA3.contains(mpos)) {
-                            pdaInput.text = "()[]{}[]";
+                            pdaInput.text = "aaabb"; // intentionally unbalanced example
                             shouldRun = true;
                         }
                     }
