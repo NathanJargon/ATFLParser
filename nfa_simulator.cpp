@@ -1,4 +1,5 @@
 #include "nfa_simulator.h"
+#include <sstream>
 
 /**
  * FILE: nfa_simulator.cpp
@@ -58,4 +59,82 @@ bool simulateNFA(NFAFragment nfa, std::string input) {
         }
     }
     return false;
+}
+
+std::string simulateNFAWithTrace(NFAFragment nfa, std::string input) {
+    std::ostringstream trace;
+    std::set<NFAState*> currentStates;
+    std::set<int> visited;
+    
+    getEpsilonClosure(nfa.start, visited, currentStates);
+    
+    trace << "      Step 0: Initial ε-closure from state " << nfa.start->id << "\n";
+    trace << "              Current states: {";
+    bool first = true;
+    for (auto s : currentStates) {
+        if (!first) trace << ", ";
+        trace << s->id;
+        first = false;
+    }
+    trace << "}\n\n";
+
+    int step = 1;
+    for (size_t i = 0; i < input.length(); i++) {
+        char c = input[i];
+        std::set<NFAState*> nextStates;
+        
+        trace << "      Step " << step++ << ": Read '" << c << "' (position " << i << ")\n";
+        
+        for (auto s : currentStates) {
+            if (s->transitions.count(c)) {
+                trace << "              State " << s->id << " --[" << c << "]--> ";
+                bool firstTrans = true;
+                for (auto next : s->transitions[c]) {
+                    if (!firstTrans) trace << ", ";
+                    trace << next->id;
+                    firstTrans = false;
+                    
+                    std::set<int> v;
+                    getEpsilonClosure(next, v, nextStates);
+                }
+                trace << "\n";
+            }
+        }
+        
+        currentStates = nextStates;
+        
+        trace << "              After ε-closure: {";
+        first = true;
+        for (auto s : currentStates) {
+            if (!first) trace << ", ";
+            trace << s->id;
+            first = false;
+        }
+        trace << "}\n";
+        
+        if (currentStates.empty()) {
+            trace << "              DEAD STATE - No valid transitions\n";
+            return trace.str();
+        }
+        trace << "\n";
+    }
+
+    trace << "      Final Check: ";
+    bool accepted = false;
+    for(auto s : currentStates) {
+        for(auto f : nfa.finals) {
+            if(s == f) {
+                accepted = true;
+                trace << "State " << s->id << " is a final state\n";
+                break;
+            }
+        }
+        if (accepted) break;
+    }
+    
+    if (!accepted) {
+        trace << "No current state is a final state\n";
+    }
+    
+    return trace.str();
 }

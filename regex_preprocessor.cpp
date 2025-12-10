@@ -8,6 +8,8 @@
  * PROCESS:
  *   
  *   preprocessRegex():
+ *   - PASS 0: Expand character classes [a-z], [0-9], [^...], \d, \w, \s
+ *     Example: [a-z] -> (a|b|c|...|z), [0-9] -> (0|1|2|...|9)
  *   - PASS 1: Iterates through regex, replaces '+' with duplication + '*'
  *     Example: A+ -> AA*, (A|B)+ -> (A|B)(A|B)*
  *   - PASS 2: Scans result, inserts '.' between consecutive operands
@@ -20,7 +22,101 @@
  *   - Parentheses: manage stack for grouping
  */
 
+// Helper function to expand character ranges
+std::string expandCharacterClass(const std::string& classContent, bool negate) {
+    std::string chars = "";
+    
+    // Parse the class content for ranges like a-z or literal chars
+    for (size_t i = 0; i < classContent.length(); i++) {
+        if (i + 2 < classContent.length() && classContent[i + 1] == '-') {
+            // Range detected: a-z, 0-9, etc.
+            char start = classContent[i];
+            char end = classContent[i + 2];
+            for (char c = start; c <= end; c++) {
+                chars += c;
+            }
+            i += 2; // Skip the '-' and end char
+        } else {
+            // Literal character
+            chars += classContent[i];
+        }
+    }
+    
+    if (negate) {
+        // For negation [^...], we'll support only ASCII printable chars (33-126)
+        std::string negatedChars = "";
+        for (char c = 33; c <= 126; c++) {
+            if (chars.find(c) == std::string::npos) {
+                negatedChars += c;
+            }
+        }
+        chars = negatedChars;
+    }
+    
+    // Build union: (a|b|c|...)
+    if (chars.empty()) return "";
+    if (chars.length() == 1) return std::string(1, chars[0]);
+    
+    std::string result = "(";
+    for (size_t i = 0; i < chars.length(); i++) {
+        result += chars[i];
+        if (i < chars.length() - 1) result += "|";
+    }
+    result += ")";
+    return result;
+}
+
 std::string preprocessRegex(std::string regex) {
+    // PASS 0: Expand character classes and escape sequences
+    std::string withClasses = "";
+    for (size_t i = 0; i < regex.length(); i++) {
+        char c = regex[i];
+        
+        // Handle escape sequences
+        if (c == '\\' && i + 1 < regex.length()) {
+            char next = regex[i + 1];
+            if (next == 'd') {
+                // \d -> [0-9]
+                withClasses += "(0|1|2|3|4|5|6|7|8|9)";
+                i++;
+            } else if (next == 'w') {
+                // \w -> [A-Za-z0-9_]
+                withClasses += "(A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|0|1|2|3|4|5|6|7|8|9|_)";
+                i++;
+            } else if (next == 's') {
+                // \s -> [ \t\n\r]
+                withClasses += "( )"; // Simplified: just space
+                i++;
+            } else {
+                // Unknown escape, keep literal
+                withClasses += c;
+            }
+        }
+        // Handle character classes [...]
+        else if (c == '[') {
+            size_t end = regex.find(']', i + 1);
+            if (end != std::string::npos) {
+                std::string classContent = regex.substr(i + 1, end - i - 1);
+                bool negate = false;
+                
+                // Check for negation [^...]
+                if (!classContent.empty() && classContent[0] == '^') {
+                    negate = true;
+                    classContent = classContent.substr(1);
+                }
+                
+                withClasses += expandCharacterClass(classContent, negate);
+                i = end; // Skip to closing ]
+            } else {
+                withClasses += c; // Malformed, keep literal
+            }
+        } else {
+            withClasses += c;
+        }
+    }
+    
+    regex = withClasses;
+    
     // PASS 1: Expand '+' operator (Syntactic Sugar)
     // A+ -> AA*
     // (A|B)+ -> (A|B)(A|B)*

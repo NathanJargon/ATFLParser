@@ -23,3 +23,7 @@ NFAState* StateManager::create() {
 void StateManager::clear() {
     stateStore.clear();
 }
+
+int StateManager::getStateCount() {
+    return static_cast<int>(stateStore.size());
+}

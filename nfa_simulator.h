@@ -27,5 +27,6 @@
 
 void getEpsilonClosure(NFAState* s, std::set<int>& visited, std::set<NFAState*>& closure);
 bool simulateNFA(NFAFragment nfa, std::string input);
+std::string simulateNFAWithTrace(NFAFragment nfa, std::string input);
 
 #endif

@@ -27,6 +27,7 @@ struct StateManager {
     static std::vector<std::unique_ptr<NFAState>> stateStore;
     static NFAState* create();
     static void clear();
+    static int getStateCount();
 };
 
 struct NFAState {
