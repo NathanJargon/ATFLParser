@@ -3,6 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <deque>
+#include <set>
 
 #include "adaptive_pda.h"
 #include "nfa_simulator.h"
@@ -104,6 +105,10 @@ static std::string runPhase1(const std::string& regex, const std::string& testIn
     if (regex.empty()) return "Error: Please enter a regex pattern.";
 
     try {
+        // IMPORTANT: Clear previous states to prevent accumulation
+        StateManager::clear();
+        StateManager::resetID();
+        
         std::string processed = preprocessRegex(regex);
         std::string postfix = toPostfix(processed);
 
@@ -138,6 +143,34 @@ static std::string runPhase1(const std::string& regex, const std::string& testIn
             if (i < nfa.finals.size() - 1) oss << ", ";
         }
         oss << "\n\n";
+        
+        // Show sample transitions (BFS to find key paths)
+        oss << "    Key Transitions:\n";
+        std::set<NFAState*> visited;
+        std::deque<NFAState*> queue;
+        queue.push_back(nfa.start);
+        visited.insert(nfa.start);
+        int pathCount = 0;
+        
+        while (!queue.empty() && pathCount < 5) {
+            NFAState* current = queue.front();
+            queue.pop_front();
+            
+            for (const auto& [ch, nexts] : current->transitions) {
+                for (NFAState* next : nexts) {
+                    if (visited.find(next) == visited.end()) {
+                        std::string display = (ch == 'E') ? "e" : std::string(1, ch);
+                        oss << "      q" << current->id << " --[" << display << "]--> q" << next->id << "\n";
+                        visited.insert(next);
+                        queue.push_back(next);
+                        pathCount++;
+                        if (pathCount >= 5) break;
+                    }
+                }
+                if (pathCount >= 5) break;
+            }
+        }
+        if (pathCount > 0) oss << "\n";
         
         // Step 5: Test strings
         if (testInputs.empty()) {
@@ -259,7 +292,7 @@ static std::string runPDA(const std::string& input) {
 }
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode({1100u, 700u}), "Emor-Samaria-Bond Analysis", sf::Style::Close);
+    sf::RenderWindow window(sf::VideoMode({1100u, 700u}), "Formal Language Hierarchy - Lexical & Syntactic Analysis", sf::Style::Close);
     window.setFramerateLimit(60);
 
     sf::Font font;
@@ -339,8 +372,8 @@ int main() {
     Button btnClear(font, "Clear All", {25.f, 530.f});
     Button btnQuit(font,  "Quit",      {25.f, 590.f});
 
-    // RIGHT PANEL - OUTPUT LOG
-    sf::RectangleShape rightPanel(sf::Vector2f(755.f, 670.f));
+    // RIGHT PANEL - OUTPUT LOG (taller for better visibility)
+    sf::RectangleShape rightPanel(sf::Vector2f(755.f, 645.f));
     rightPanel.setPosition({335.f, 20.f});
     rightPanel.setFillColor(sf::Color(15, 20, 35));
     rightPanel.setOutlineThickness(2.f);
@@ -354,6 +387,8 @@ int main() {
     logLines.push_back("Select a mode and enter input to begin.");
     logLines.push_back("Regular Languages: Finite automata (no memory)");
     logLines.push_back("Context-Free: Pushdown automata (stack memory)");
+    
+    int scrollOffset = 0;  // Track scroll position
     
     auto updateHover = [&](sf::Vector2f mpos) {
         btnAnalyze.setHover(btnAnalyze.contains(mpos));
@@ -385,6 +420,16 @@ int main() {
             if (const auto* key = event.getIf<sf::Event::KeyPressed>()) {
                 if (key->scancode == sf::Keyboard::Scan::Escape) {
                     window.close();
+                }
+            }
+            
+            // Handle scroll wheel for output panel
+            if (const auto* scroll = event.getIf<sf::Event::MouseWheelScrolled>()) {
+                int maxScroll = static_cast<int>(logLines.size()) - 20;
+                if (scroll->delta > 0) {
+                    scrollOffset = std::max(0, scrollOffset - 3);
+                } else {
+                    scrollOffset = std::min(maxScroll, scrollOffset + 3);
                 }
             }
 
@@ -483,6 +528,7 @@ int main() {
                             result = runPDA(pdaInput.text);
                         }
                         logLines.clear();
+                        scrollOffset = 0;  // Reset scroll to top when new analysis runs
                         std::istringstream stream(result);
                         std::string line;
                         while (std::getline(stream, line)) {
@@ -550,12 +596,14 @@ int main() {
         btnClear.draw(window);
         btnQuit.draw(window);
         
-        // Draw output log (scrollable, up to 20 lines, with truncation for very long lines)
-        size_t maxLines = 20;
-        size_t startIdx = logLines.size() > maxLines ? logLines.size() - maxLines : 0;
+        // Draw output log (scrollable, up to 40 lines, with truncation for very long lines)
+        size_t maxLines = 40;
+        size_t startIdx = scrollOffset;
+        if (startIdx >= logLines.size()) startIdx = logLines.size() > maxLines ? logLines.size() - maxLines : 0;
+        
         float logY = 70.f;
         const int maxCharsPerLine = 80; // Truncate very long lines
-        for (size_t i = startIdx; i < logLines.size(); i++) {
+        for (size_t i = startIdx; i < logLines.size() && i < startIdx + maxLines; i++) {
             std::string displayText = logLines[i];
             // Truncate if too long
             if (displayText.length() > maxCharsPerLine) {
@@ -566,6 +614,14 @@ int main() {
             logLine.setPosition({350.f, logY});
             window.draw(logLine);
             logY += 15.f;
+        }
+        
+        // Draw scroll indicator
+        if (logLines.size() > maxLines) {
+            sf::Text scrollHint(font, "Scroll: UP/DOWN", 10);
+            scrollHint.setFillColor(sf::Color(150, 150, 170));
+            scrollHint.setPosition({350.f, 680.f});
+            window.draw(scrollHint);
         }
         
         window.display();

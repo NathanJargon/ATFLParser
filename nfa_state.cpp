@@ -24,6 +24,10 @@ void StateManager::clear() {
     stateStore.clear();
 }
 
+void StateManager::resetID() {
+    NFAState::globalID = 0;
+}
+
 int StateManager::getStateCount() {
     return static_cast<int>(stateStore.size());
 }

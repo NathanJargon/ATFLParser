@@ -163,11 +163,14 @@ std::string preprocessRegex(std::string regex) {
         if (i + 1 < expanded.length()) {
             char next = expanded[i + 1];
            
-            // Insert dot if between two operands
-            bool isLeftOperand = std::isalnum(c) || c == ')' || c == '*';
-            bool isRightOperand = std::isalnum(next) || next == '(';
+            // Insert dot between operands
+            // Left can produce: literal, ), or *
+            // Right can consume: literal or (
+            
+            bool leftProduces = (c != '|' && c != '(');  // anything except | and (
+            bool rightConsumes = (next != '|' && next != '*' && next != ')');  // anything except operators and )
            
-            if (isLeftOperand && isRightOperand) {
+            if (leftProduces && rightConsumes) {
                 res += '.';
             }
         }
@@ -186,8 +189,13 @@ std::string toPostfix(std::string regex) {
     std::string postfix = "";
     std::stack<char> opStack;
     for (char c : regex) {
-        if (std::isalnum(c)) {
-            postfix += c;
+        if (c == '.' || c == '|' || c == '*') {
+            // It's an operator
+            while (!opStack.empty() && precedence(opStack.top()) >= precedence(c)) {
+                postfix += opStack.top();
+                opStack.pop();
+            }
+            opStack.push(c);
         } else if (c == '(') {
             opStack.push(c);
         } else if (c == ')') {
@@ -199,11 +207,8 @@ std::string toPostfix(std::string regex) {
                 opStack.pop();
             }
         } else {
-            while (!opStack.empty() && precedence(opStack.top()) >= precedence(c)) {
-                postfix += opStack.top();
-                opStack.pop();
-            }
-            opStack.push(c);
+            // It's a literal operand (any character that's not an operator or paren)
+            postfix += c;
         }
     }
     while (!opStack.empty()) {

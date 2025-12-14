@@ -28,6 +28,7 @@ struct StateManager {
     static NFAState* create();
     static void clear();
     static int getStateCount();
+    static void resetID();
 };
 
 struct NFAState {

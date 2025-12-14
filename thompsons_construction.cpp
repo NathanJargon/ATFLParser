@@ -63,9 +63,7 @@ NFAFragment makeStar(NFAFragment fragment) {
 NFAFragment regexToNFA(std::string postfix) {
     std::stack<NFAFragment> st;
     for (char c : postfix) {
-        if (std::isalnum(c)) {
-            st.push(makeChar(c));
-        } else if (c == '.') {
+        if (c == '.') {
             if (st.size() < 2) { 
                 std::cerr << "Error: Malformed Regex (Stack Underflow on .)" << std::endl; 
                 exit(1); 
@@ -88,6 +86,9 @@ NFAFragment regexToNFA(std::string postfix) {
             }
             NFAFragment a = st.top(); st.pop();
             st.push(makeStar(a));
+        } else {
+            // Treat any other character as a literal operand
+            st.push(makeChar(c));
         }
     }
     if (st.empty()) { 
